@@ -158,9 +158,46 @@ fn kill_daemon(name: &str) -> Result<()> {
     Ok(())
 }
 
+fn kill_all_daemons() -> Result<Vec<String>> {
+    let daemons = list_daemons()?;
+    let mut killed = Vec::new();
+    
+    for daemon in daemons {
+        match kill_daemon(&daemon) {
+            Ok(_) => killed.push(daemon),
+            Err(e) => eprintln!("Failed to kill daemon '{}': {}", daemon, e),
+        }
+    }
+    
+    Ok(killed)
+}
+
 #[derive(Parser)]
 #[command(name = "attyvo")]
-#[command(about = "A daemon process manager", long_about = None)]
+#[command(about = "A PTY-based daemon process manager with named pipe I/O", long_about = "
+attyvo manages long-running processes as daemons with pseudo-terminal (PTY) support.
+Each daemon runs in the background with stdin, stdout, and stderr accessible through
+named pipes, allowing interactive communication with terminal-aware applications.
+
+Examples:
+  # Start a Python REPL daemon
+  attyvo create python-repl python3 -i
+
+  # Send commands to the daemon
+  attyvo write python-repl \"print('Hello from daemon!')\"
+
+  # Read output from the daemon
+  attyvo read python-repl
+
+  # List all running daemons
+  attyvo list
+
+  # Stop a specific daemon
+  attyvo kill python-repl
+
+  # Stop all running daemons
+  attyvo kill-all
+")]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -168,40 +205,55 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Create a new daemon process
+    /// Create and start a new daemon process with PTY support
+    #[command(long_about = "Creates a new daemon that runs in the background with a pseudo-terminal.
+The daemon's I/O streams are accessible through named pipes in /tmp/daemon_pipes/.")]
     Create {
-        /// Name of the daemon
+        /// Unique identifier for this daemon
         name: String,
-        /// Command to execute
+        /// Command or executable to run as a daemon
         command: String,
-        /// Arguments for the command
+        /// Additional arguments to pass to the command
         #[arg(trailing_var_arg = true)]
         args: Vec<String>,
     },
-    /// Write to daemon's stdin
+    /// Send input to a daemon's stdin
+    #[command(long_about = "Writes a message to the daemon's stdin pipe, allowing you to send
+commands or data to interactive programs running as daemons.")]
     Write {
-        /// Name of the daemon
+        /// Name of the target daemon
         name: String,
-        /// Message to write
+        /// Text to send (a newline will be added automatically)
         message: String,
     },
-    /// Read from daemon's stdin (note: this reads from stdin pipe)
+    /// Read error output from a daemon's stderr
+    #[command(name = "read-stderr")]
     ReadStderr {
-        /// Name of the daemon
+        /// Name of the target daemon
         name: String,
     },
-    /// Read from daemon's stdout
+    /// Read output from a daemon's stdout
+    #[command(long_about = "Reads all available output from the daemon's stdout pipe.
+This is a non-blocking read that returns immediately with any buffered output.")]
     Read {
-        /// Name of the daemon
+        /// Name of the target daemon
         name: String,
     },
-    /// Kill a daemon process
+    /// Terminate a daemon and clean up its resources
+    #[command(long_about = "Stops the daemon process and removes its PID file and named pipes.
+The daemon will receive a SIGTERM signal for graceful shutdown.")]
     Kill {
-        /// Name of the daemon
+        /// Name of the daemon to terminate
         name: String,
     },
-    /// List all running daemons
+    /// Display all currently running daemons
+    #[command(long_about = "Shows a list of all active daemons by checking PID files in /tmp/daemon_pipes/.
+Only daemons with valid PID files are displayed.")]
     List,
+    /// Terminate all running daemons
+    #[command(name = "kill-all", long_about = "Stops all running daemon processes and cleans up their resources.
+Each daemon will receive a SIGTERM signal for graceful shutdown.")]
+    KillAll,
 }
 
 fn main() -> Result<()> {
@@ -240,6 +292,17 @@ fn main() -> Result<()> {
             } else {
                 println!("Running daemons:");
                 for daemon in daemons {
+                    println!("  - {}", daemon);
+                }
+            }
+        }
+        Commands::KillAll => {
+            let killed = kill_all_daemons()?;
+            if killed.is_empty() {
+                println!("No daemons to kill");
+            } else {
+                println!("Killed {} daemon(s):", killed.len());
+                for daemon in killed {
                     println!("  - {}", daemon);
                 }
             }
