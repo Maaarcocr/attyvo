@@ -6,6 +6,12 @@ A tool that enables non-interactive programs to interact with interactive CLIs b
 
 attyvo acts as a bridge between programs that expect terminal input/output and non-interactive environments. This is particularly useful for AI coding assistants like Claude Code, which need to interact with interactive command-line tools programmatically.
 
+## Installation
+
+```bash
+cargo install attyvo
+```
+
 ## Features
 
 - Creates pseudo-terminals for interactive CLI programs
