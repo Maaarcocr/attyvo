@@ -1,0 +1,46 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'attyvo'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=attyvo",
+                    "--package=attyvo"
+                ],
+                "filter": {
+                    "name": "attyvo",
+                    "kind": "bin"
+                }
+            },
+            "args": ["create", "marco", "git", "add", "-p"],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'attyvo'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=attyvo",
+                    "--package=attyvo"
+                ],
+                "filter": {
+                    "name": "attyvo",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}
